@@ -29,7 +29,7 @@
 
 
 class MHF{
-	private $box, $initBox, $i, $j, $drop;
+	private $box, $initBox, $i, $j, $drop, $count;
 
 	function __construct($IV, $nonce = null){
 		$this->drop = 512;
@@ -65,7 +65,10 @@ class MHF{
 		$len = strlen($str);
 		$res = "";
 		for($i = 0; $i < $len; ++$i){
-			$res .= chr(ord($str{$i}) ^ $this->PRGA($i));
+			$res .= chr(ord($str{$i}) ^ $this->PRGA($i + $this->count));
+		}
+		if($init !== false){
+			$this->count += $len;
 		}
 		return $res;
 	}
@@ -97,11 +100,12 @@ class MHF{
 		$this->initPRGA();
 	}	
 	
-	protected function initPRGA(){
+	public function initPRGA(){
 		$this->i = 0;
 		$this->j = 0;
 		$this->h = 0;
 		$this->ch = 0;
+		$this->count = 0;
 		$this->box = $this->initBox;
 		$this->dropPRGA($this->drop);
 	}
