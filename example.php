@@ -29,6 +29,8 @@ $decrypted = $MHF->decrypt(base64_decode($encrypted));
 echo "Decrypted text [mall. deny] => ",$decrypted,PHP_EOL,PHP_EOL;
 
 $encrypted{7} = chr(1+ord($encrypted{7})); //Change a byte
+$decrypted = $MHF->decrypt(base64_decode($encrypted));
+echo "Decrypted text [mall. deny changed 7 byte] => ",$decrypted,PHP_EOL,PHP_EOL;
 
 //Hashing example
 $MHF = new MHF($str); //Nonce optional, it could be the username

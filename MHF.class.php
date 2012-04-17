@@ -152,7 +152,6 @@ class MHF{
 		}
 	}
 
-
 	public static function swap(&$a, &$b){
 		$c = $a;
 		$a = $b;
@@ -177,7 +176,7 @@ class MHF{
 		
 		$h = 0;
 		for($i = 0; $i < 256; ++$i){
-			for($j = 0; $j < 256; ++$j){
+			for($j = 0; $j < (64 + $h); ++$j){
 				$h = ($h + $box[($h + $j) % 256][($h + $i + 1) % 256] + $IV[(($i * 256) + $j) % $len]) % 256;
 				self::swap($box[$i][($j + 1) % 256], $box[$h][$j]);
 				self::swap($box[$i][$h], $box[$j][$h]);
