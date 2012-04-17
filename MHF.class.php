@@ -124,8 +124,8 @@ class MHF{
 		for($i = 0; $i < ($len * 256); ++$i){
 			$h = ($box[($i + 1 + $nonce[$i % $len] + $h) % 256][($h + $nonce[($i + $h + $j) % $len]) % 256] + $h + 1) % 256;
 			$j = ($h + $i + $j + 1) % 256;
-			self::swap($box[$h][$j], $box[$j][$i]);
-			self::swap($box[$i % 256], $box[($h + $j) % 256]);		
+			$this->swap($box[$h][$j], $box[$j][$i]);
+			$this->swap($box[$i % 256], $box[($h + $j) % 256]);		
 		}
 		$this->initBox = $box;
 		$this->initPRGA();
@@ -152,7 +152,7 @@ class MHF{
 		}
 	}
 
-	public static function swap(&$a, &$b){
+	public static function swap(&$a, &$b, $array = true){	
 		$c = $a;
 		$a = $b;
 		$b = $c;
@@ -178,11 +178,11 @@ class MHF{
 		for($i = 0; $i < 256; ++$i){
 			for($j = 0; $j < (64 + $h); ++$j){
 				$h = ($h + $box[($h + $j) % 256][($h + $i + 1) % 256] + $IV[(($i * 256) + $j) % $len]) % 256;
-				self::swap($box[$i][($j + 1) % 256], $box[$h][$j]);
-				self::swap($box[$i][$h], $box[$j][$h]);
-				self::swap($box[$i][$j], $box[$h][$i]);
+				$this->swap($box[$i][($j + 1) % 256], $box[$h][$j]);
+				$this->swap($box[$i][$h], $box[$j][$h]);
+				$this->swap($box[$i][$j], $box[$h][$i]);
 			}
-			self::swap($box[($i + $h) % 256], $box[($h + 1) % 256]);
+			$this->swap($box[($i + $h) % 256], $box[($h + 1) % 256]);
 		}
 		
 		$j = 0;
@@ -190,34 +190,28 @@ class MHF{
 		for($i = 0; $i < $len; ++$i){
 			$h = ($box[($i + 1 + ($IV[$i] & 0xf0) + $h) % 256][($h + ($IV[($i + $h + $j) % $len] & 0xf0)) % 256] + $h + 1) % 256;
 			$j = ($h + $i + $j + 1) % 256;
-			self::swap($box[$h][$j], $box[$j][$i]);
-			self::swap($box[$h][$i], $box[$j][$h]);		
+			$this->swap($box[$h][$j], $box[$j][$i]);
+			$this->swap($box[$h][$i], $box[$j][$h]);		
 		}
 		return $box;
 	}
 	
-	protected function PRGA($ch){
-		if($ch === false){
-			return 0;
-		}
-		
-		$i = $this->i;
-		$j = $this->j;
-		$h = $this->h;
-		$ch = ($this->ch + $ch) % 256;
+	protected function PRGA($ch){		
+		$box =& $this->box;
+		$i =& $this->i;
+		$j =& $this->j;
+		$h =& $this->h;
+		$this->ch = ($this->ch + $ch + $h) % 256;
+		$ch =& $this->ch;
 		
 		$i = ($i + 1) % 256;
-		$j = ($j + $this->box[($i + $ch) % 256][$j] + $ch) % 256;
-		$h = ($h + $this->box[$j][($i + $ch) % 256]) % 256;
-		self::swap($this->box[$h][$j], $this->box[$i][$h]);
-		self::swap($this->box[$i][$j], $this->box[$h][$i]);
+		$j = ($j + $box[($i + $ch) % 256][$j] + $ch) % 256;
+		$h = ($h + $box[$j][($i + $ch) % 256]) % 256;
+		$this->swap($box[$h][$j], $box[$i][$ch]);
+		$this->swap($box[$i][$j], $box[$ch][$i]);
 		
-		$this->i = $i;
-		$this->j = $j;
-		$this->h = $h;
-		$this->ch = $ch;
-		$r1 = $this->box[($this->box[$i][$j] + $this->box[$h][$i]) % 256][($this->box[$j][$i] + $this->box[$i][$h]) % 256];
-		$r2 = $this->box[($this->box[$j][$i] + $this->box[$i][$h] + $r1) % 256][($this->box[$i][$j] + $this->box[$h][$i] + $r1) % 256];
+		$r1 = $box[($box[$i][$j] + $box[$h][$i]) % 256][($box[$j][$i] + $box[$i][$h]) % 256];
+		$r2 = $box[($box[$j][$i] + $box[$i][$h] + $r1) % 256][($box[$i][$j] + $box[$h][$i] + $r1) % 256];
 		return $r1 ^ $r2;
 	}
 
