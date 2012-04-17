@@ -10,6 +10,11 @@
  * An optional nonce can be added to the input of the algorithm.
  * Also allows to create hashes of arbitrary lenght (but lenght
  * must be divisible by 2)
+ * Now denegates malleability
+ * 
+ * 
+ * WARNING
+ * This is a work in progress, the algorithm could change to improve security
  * 
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -57,20 +62,50 @@ class MHF{
 		}
 		return $ret;
 	}
+
+	public function encrypt($str){ //Encryption, denegates malleability
+		$this->initPRGA();
+		$str = array_map("ord", str_split($str, 1));		
+		$len = count($str);
+		$last = 0;
+
+		for($i = 0; $i < $len; ++$i){
+			$ch = $str[$i];
+			$str[$i] = $ch ^ $this->PRGA($i + $last); //Chain last byte
+			$last = $ch;
+		}
+
+		return implode(array_map("chr", $str));
+	}
 	
-	public function crypt($str, $init = true){
+	public function decrypt($str){ //Decryption, denegates malleability
+		$this->initPRGA();
+		$str = array_map("ord", str_split($str, 1));		
+		$len = count($str);
+		$last = 0;
+
+		for($i = 0; $i < $len; ++$i){
+			$last = $str[$i] ^ $this->PRGA($i + $last); //Chain last byte
+			$str[$i] = $last;
+		}
+
+		return implode(array_map("chr", $str));
+	}
+	
+	public function crypt($str, $init = true){ //Two-Way encrypt/decrypt same function
 		if($init !== false){
 			$this->initPRGA(); //Allow chaining
 		}
-		$len = strlen($str);
-		$res = "";
+		$str = array_map("ord", str_split($str, 1));		
+		$len = count($str);
+		
 		for($i = 0; $i < $len; ++$i){
-			$res .= chr(ord($str{$i}) ^ $this->PRGA($i + $this->count));
+			$str[$i] = $str[$i] ^ $this->PRGA($i + $this->count);
 		}
-		if($init !== false){
+		if($init === false){
 			$this->count += $len;
 		}
-		return $res;
+		return implode(array_map("chr", $str));
 	}
 	
 	public function IV($IV){
@@ -80,13 +115,14 @@ class MHF{
 	
 	public function nonce($nonce){
 		
-		$len = strlen($nonce);
+		$nonce = array_map("ord", str_split($nonce, 1));
+		$len = count($nonce);
 		$j = 0;
 		$h = 0;
 		$box = $this->initBox;
 		
 		for($i = 0; $i < ($len * 256); ++$i){
-			$h = ($box[($i + 1 + ord($nonce{$i % $len}) + $h) % 256][($h + ord($nonce{($i + $h + $j) % $len})) % 256] + $h + 1) % 256;
+			$h = ($box[($i + 1 + $nonce[$i % $len] + $h) % 256][($h + $nonce[($i + $h + $j) % $len]) % 256] + $h + 1) % 256;
 			$j = ($h + $i + $j + 1) % 256;
 			self::swap($box[$h][$j], $box[$j][$i]);
 			self::swap($box[$i % 256], $box[($h + $j) % 256]);		
@@ -124,7 +160,8 @@ class MHF{
 	}
 
 	private function KSA($IV){
-		$len = strlen($IV);
+		$IV = array_map("ord", str_split($IV, 1));
+		$len = count($IV);
 		if($len == 0){ //Empty key
 			$IV = "\x00";
 			$len = 1;
@@ -141,7 +178,7 @@ class MHF{
 		$h = 0;
 		for($i = 0; $i < 256; ++$i){
 			for($j = 0; $j < 256; ++$j){
-				$h = ($h + $box[($h + $j) % 256][($h + $i + 1) % 256] + ord($IV{(($i * 256) + $j) % $len})) % 256;
+				$h = ($h + $box[($h + $j) % 256][($h + $i + 1) % 256] + $IV[(($i * 256) + $j) % $len]) % 256;
 				self::swap($box[$i][($j + 1) % 256], $box[$h][$j]);
 				self::swap($box[$i][$h], $box[$j][$h]);
 				self::swap($box[$i][$j], $box[$h][$i]);
@@ -152,7 +189,7 @@ class MHF{
 		$j = 0;
 		$h = 0;
 		for($i = 0; $i < $len; ++$i){
-			$h = ($box[($i + 1 + (ord($IV{$i}) & 0xf0) + $h) % 256][($h + (ord($IV{($i + $h + $j) % $len}) & 0xf0)) % 256] + $h + 1) % 256;
+			$h = ($box[($i + 1 + ($IV[$i] & 0xf0) + $h) % 256][($h + ($IV[($i + $h + $j) % $len] & 0xf0)) % 256] + $h + 1) % 256;
 			$j = ($h + $i + $j + 1) % 256;
 			self::swap($box[$h][$j], $box[$j][$i]);
 			self::swap($box[$h][$i], $box[$j][$h]);		
